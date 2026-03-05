@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1415">
+  <title>塔悠路 公車站牌</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&family=Inter:wght@700&display=swap" rel="stylesheet">
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <style>
+    /* ══════════════════════════════════════════════
+       SHARED TOKENS & BASE
+    ══════════════════════════════════════════════ */
+    :root {
+      --cream: #F2EADF;
+      --navy:  #142E43;
+      --sage:  #8ABF92;
+      --brown: #8C6B4F;
+      --tan:   #D9B391;
+      --alt:   #E8DFCF;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #4A3525; min-height: 100vh; }
+
+    /* ── View switcher ── */
+    .view { display: none; }
+    .view.active { display: block; animation: viewEnter 0.32s ease-out; }
+    @keyframes viewEnter {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Scale wrapper ── */
+    .sw { transform-origin: top left; width: 1415px; }
+
+    /* ── Panel ── */
+    .panel {
+      width: 1415px;
+      background: var(--cream);
+      border: 4px solid var(--brown);
+      overflow: hidden;
+    }
+
+    /* ── Shared header ── */
+    .stop-header {
+      position: sticky; top: 0; z-index: 10;
+      background: var(--brown);
+      height: 188px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 48px;
+      border-bottom: 5px solid var(--tan);
+    }
+    /* Clickable header variant */
+    .nav-header { cursor: pointer; transition: background 0.2s; position: relative; }
+    .nav-header:hover { background: #9e7b5a; }
+    .nav-header::after {
+      content: attr(data-hint);
+      position: absolute;
+      bottom: 14px; left: 50%; transform: translateX(-50%);
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 22px; color: rgba(242,234,223,0.35);
+      letter-spacing: 0.06em; white-space: nowrap;
+      pointer-events: none; transition: color 0.2s;
+    }
+    .nav-header:hover::after { color: rgba(242,234,223,0.72); }
+
+    /* ── Stop name (shared) ── */
+    .stop-name-block { display: flex; flex-direction: column; gap: 4px; }
+    .stop-name-zh {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 108px; color: var(--cream); line-height: 1;
+    }
+    .stop-name-en {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 400; font-size: 36px; color: var(--tan); letter-spacing: 0.06em;
+    }
+
+    /* ── Clock (shared) ── */
+    .clock-block { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .clock-time {
+      font-family: 'Roboto', 'Inter', sans-serif;
+      font-weight: 700; font-size: 96px; color: var(--cream);
+      line-height: 1; letter-spacing: 0.08em; font-variant-numeric: tabular-nums;
+    }
+    .clock-date {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 400; font-size: 32px; color: var(--tan); letter-spacing: 0.03em;
+    }
+
+    /* ── Safety banner (shared) ── */
+    .safety-banner {
+      background: var(--tan);
+      height: 86px;
+      display: flex; align-items: center; justify-content: center;
+      border-bottom: 3px solid var(--brown);
+    }
+    .safety-item { display: flex; align-items: center; gap: 14px; padding: 0 56px; }
+    .safety-icon { width: 46px; height: 46px; color: var(--navy); flex-shrink: 0; }
+    .safety-text {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 32px; color: var(--navy); white-space: nowrap;
+    }
+    .safety-sep { width: 2px; height: 44px; background: var(--brown); opacity: 0.35; flex-shrink: 0; }
+
+    /* ── Route badge (shared) ── */
+    .route-badge {
+      width: 192px; height: 192px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .badge-navy, .badge-plain { background: var(--navy); }
+    .badge-orange { background: #C47B3A; }
+    .badge-amber, .badge-yellow { background: #C9A02A; }
+    .badge-red { background: #9B4333; }
+    .route-number {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 700; font-size: 96px; color: var(--cream); line-height: 1;
+    }
+
+    /* ══════════════════════════════════════════════
+       VIEW 1 — LANDING  (bus schedule + crowding)
+    ══════════════════════════════════════════════ */
+    #view-landing .col-labels {
+      background: var(--navy); height: 56px;
+      display: flex; align-items: center; padding: 0 44px 0 28px;
+    }
+    .lbl {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 26px; color: var(--tan); white-space: nowrap;
+    }
+    #view-landing .lbl-route  { width: 192px; text-align: center; flex-shrink: 0; }
+    #view-landing .lbl-dest   { width: 390px; margin-left: 28px; flex-shrink: 0; }
+    #view-landing .lbl-status { margin-left: auto; width: 212px; text-align: center; flex-shrink: 0; }
+    #view-landing .lbl-arr    { width: 388px; text-align: center; margin-left: 16px; flex-shrink: 0; }
+
+    #view-landing .bus-list { display: flex; flex-direction: column; }
+    #view-landing .bus-row {
+      height: 238px; display: flex; align-items: center;
+      padding: 0 44px 0 28px; border-bottom: 2px solid var(--tan);
+    }
+    #view-landing .bus-row:nth-child(odd)  { background: var(--cream); }
+    #view-landing .bus-row:nth-child(even) { background: var(--alt); }
+    #view-landing .bus-row:last-child { border-bottom: none; }
+
+    #view-landing .destination {
+      width: 390px; flex-shrink: 0; margin-left: 28px;
+      display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    }
+    #view-landing .dest-main {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 78px; color: var(--navy); line-height: 1;
+    }
+    #view-landing .dest-sub {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 400; font-size: 44px; color: var(--brown); line-height: 1;
+    }
+    #view-landing .status-area {
+      margin-left: auto; display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+    }
+
+    /* Capacity box */
+    #view-landing .capacity {
+      width: 212px; height: 176px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 4px; padding: 12px 8px 10px;
+    }
+    .cap-spacious { background: var(--sage); }
+    .cap-normal   { background: #A8C9AA; }
+    .cap-crowded  { background: var(--tan); }
+    .cap-full     { background: #9B4333; }
+    .cap-icon { width: 42px; height: 42px; flex-shrink: 0; }
+    .cap-count {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 700; font-size: 54px; color: var(--navy); line-height: 1;
+    }
+    .cap-label {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 25px; color: var(--navy); line-height: 1;
+    }
+    .cap-full .cap-icon, .cap-full .cap-count, .cap-full .cap-label { color: #fff; }
+
+    /* Arrival block (landing) */
+    #view-landing .arrival-block {
+      width: 388px; height: 176px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 2px; padding: 0 8px;
+    }
+    #view-landing .arr-arriving {
+      background: var(--sage);
+      cursor: pointer; transition: filter 0.2s;
+    }
+    #view-landing .arr-arriving:hover { filter: brightness(1.12); }
+
+    #view-landing .arr-zh {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 84px; color: var(--navy);
+      line-height: 1; text-align: center; white-space: nowrap;
+    }
+    #view-landing .arrival-block.arr-minutes .arr-zh { font-size: 96px; }
+    #view-landing .arr-en {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700; font-size: 48px; color: var(--brown);
+      line-height: 1; text-align: center;
+    }
+    #view-landing .arr-arriving .arr-en { color: var(--navy); opacity: 0.65; }
+    #view-landing .arr-arriving .arr-zh {
+      animation: arrivePulse 1.2s ease-in-out infinite;
+    }
+    @keyframes arrivePulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.45; }
+    }
+
+    /* ══════════════════════════════════════════════
+       VIEW 2 — ROUTES  (stop-chain diagram)
+    ══════════════════════════════════════════════ */
+    #view-routes .section { background: var(--cream); }
+    #view-routes .section-label-row {
+      height: 86px; display: flex; align-items: center;
+      padding: 0 44px 0 28px; border-bottom: 3px solid var(--brown);
+    }
+    #view-routes .section-in-service .section-label-row { background: var(--sage); }
+    #view-routes .section-not-today  .section-label-row { background: var(--tan); }
+    .section-status {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 48px; color: var(--navy); line-height: 1; white-space: nowrap;
+    }
+    #view-routes .bus-list { display: flex; flex-direction: column; }
+    #view-routes .bus-row {
+      height: 238px; display: flex; align-items: center;
+      padding: 0 44px 0 28px; border-bottom: 2px solid var(--tan);
+    }
+    #view-routes .bus-row:last-child { border-bottom: none; }
+    #view-routes .bus-list .bus-row:nth-child(odd)  { background: var(--cream); }
+    #view-routes .bus-list .bus-row:nth-child(even) { background: var(--alt); }
+    #view-routes .section-not-today .bus-row { background: var(--cream); }
+
+    .row-left { display: flex; align-items: center; gap: 28px; flex-shrink: 0; }
+    #view-routes .destination {
+      width: 390px; flex-shrink: 0;
+      display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    }
+    #view-routes .dest-main {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 78px; color: var(--navy); line-height: 1;
+    }
+    #view-routes .dest-sub {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 400; font-size: 44px; color: var(--brown); line-height: 1;
+    }
+    .stop-cols {
+      margin-left: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .stop-col {
+      width: 74px; height: 192px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--navy); border-radius: 8px; flex-shrink: 0;
+    }
+    #view-routes .section-not-today .stop-col { background: var(--brown); opacity: 0.6; }
+    .stop-label {
+      writing-mode: vertical-rl; text-orientation: upright;
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 38px; color: var(--cream);
+      text-align: center; line-height: 1;
+    }
+
+    /* ══════════════════════════════════════════════
+       VIEW 3 — INCOMING  (bus approaching)
+    ══════════════════════════════════════════════ */
+
+    /* Route map strip */
+    #view-incoming .route-map {
+      background: var(--navy); padding: 26px 52px 28px;
+      border-bottom: 4px solid var(--brown); overflow: hidden; position: relative;
+    }
+    .route-map-header { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+    .route-map-label {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 28px; color: var(--tan);
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .route-map-badge {
+      background: #C47B3A; border-radius: 50%; width: 64px; height: 64px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 28px; color: var(--cream);
+      flex-shrink: 0;
+    }
+    .route-map-title {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 34px; color: var(--cream);
+    }
+    .route-map-via {
+      font-family: 'Noto Sans TC', sans-serif;
+      font-size: 26px; color: var(--tan); opacity: 0.75; margin-left: auto;
+    }
+    .route-timeline { position: relative; height: 110px; display: flex; align-items: center; }
+    .rt-line-base {
+      position: absolute; top: 38px; left: 0; right: 0;
+      height: 6px; background: rgba(217,179,145,0.25); border-radius: 3px;
+    }
+    .rt-line-done {
+      position: absolute; top: 38px; left: 0;
+      height: 6px; width: 30%; background: var(--tan); border-radius: 3px;
+    }
+    .route-stops {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      width: 100%; position: relative; z-index: 2;
+    }
+    .route-stop { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .rt-dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(217,179,145,0.3); border: 3px solid rgba(217,179,145,0.4); margin-top: 30px;
+    }
+    .rt-dot.done { background: var(--tan); border-color: var(--tan); opacity: 0.8; }
+    .rt-dot.here {
+      width: 28px; height: 28px; margin-top: 25px;
+      background: var(--cream); border: 4px solid var(--tan);
+      box-shadow: 0 0 0 8px rgba(217,179,145,0.25);
+    }
+    .rt-stop-name { font-family: 'Noto Sans TC', sans-serif; font-size: 20px; color: rgba(217,179,145,0.55); white-space: nowrap; }
+    .rt-stop-name.done { color: rgba(217,179,145,0.8); }
+    .rt-stop-name.here { font-weight: 700; font-size: 22px; color: var(--cream); }
+    .bus-on-route {
+      position: absolute; top: 4px; z-index: 5;
+      animation: routeBusMove 10s ease-in-out infinite;
+    }
+    @keyframes routeBusMove {
+      0%   { left: 5%;  opacity: 0; }
+      5%   { opacity: 1; }
+      35%  { left: 27%; }
+      60%  { left: 27%; }
+      90%  { left: 27%; opacity: 1; }
+      100% { left: 27%; opacity: 0; }
+    }
+
+    /* Incoming bus animation section */
+    #view-incoming .incoming-section {
+      background: #18313F; border-bottom: 4px solid var(--brown);
+      position: relative; height: 230px; overflow: hidden;
+    }
+    #view-incoming .incoming-section::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, #1A3A52 0%, #18313F 60%, #111a1f 100%);
+    }
+    .inc-road {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 68px; background: #222; border-top: 3px solid #444;
+    }
+    .inc-road-line {
+      position: absolute; top: 28px; left: 0; right: 0; height: 5px;
+      background: repeating-linear-gradient(90deg, #E8B73A 0px, #E8B73A 50px, transparent 50px, transparent 100px);
+      opacity: 0.45;
+    }
+    .inc-label {
+      position: absolute; left: 52px; top: 50%; transform: translateY(-55%);
+      z-index: 5; display: flex; align-items: center; gap: 24px;
+    }
+    .inc-badge {
+      width: 90px; height: 90px; border-radius: 50%; background: #C47B3A;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 44px; color: var(--cream);
+      flex-shrink: 0; box-shadow: 0 0 0 6px rgba(196,123,58,0.3);
+    }
+    .inc-info { display: flex; flex-direction: column; gap: 6px; }
+    .inc-status {
+      font-family: 'Noto Sans TC', 'Roboto', sans-serif;
+      font-weight: 700; font-size: 52px; color: var(--sage);
+      animation: pulseGlow 1.3s ease-in-out infinite; line-height: 1;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; text-shadow: 0 0 20px rgba(138,191,146,0.6); }
+      50%       { opacity: 0.5; text-shadow: none; }
+    }
+    .inc-dest { font-family: 'Noto Sans TC', sans-serif; font-size: 28px; color: var(--tan); opacity: 0.85; }
+    .inc-bus-wrap {
+      position: absolute; bottom: 36px; z-index: 4;
+      animation: busSlideIn 7s ease-out infinite;
+    }
+    @keyframes busSlideIn {
+      0%   { left: 108%; }
+      38%  { left: 56%; }
+      88%  { left: 56%; }
+      95%  { left: 56%; opacity: 1; }
+      100% { left: 56%; opacity: 0; }
+    }
+
+    /* Incoming col labels */
+    #view-incoming .col-labels {
+      background: var(--navy); height: 56px;
+      display: flex; align-items: center; padding: 0 44px 0 28px;
+    }
+    #view-incoming .lbl-route  { width: 192px; text-align: center; flex-shrink: 0; }
+    #view-incoming .lbl-dest   { width: 340px; margin-left: 28px; flex-shrink: 0; }
+    #view-incoming .lbl-crowd  { margin-left: auto; width: 390px; text-align: center; flex-shrink: 0; }
+    #view-incoming .lbl-arr    { width: 330px; text-align: center; margin-left: 16px; flex-shrink: 0; }
+
+    /* Incoming bus rows */
+    #view-incoming .bus-list { display: flex; flex-direction: column; }
+    #view-incoming .bus-row {
+      height: 240px; display: flex; align-items: center;
+      padding: 0 44px 0 28px; border-bottom: 2px solid var(--tan);
+    }
+    #view-incoming .bus-row:nth-child(odd)  { background: var(--cream); }
+    #view-incoming .bus-row:nth-child(even) { background: var(--alt); }
+    #view-incoming .bus-row:last-child { border-bottom: none; }
+
+    #view-incoming .destination {
+      width: 340px; flex-shrink: 0; margin-left: 28px;
+      display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    }
+    #view-incoming .dest-main {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 72px; color: var(--navy); line-height: 1;
+    }
+    #view-incoming .dest-sub {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 400; font-size: 40px; color: var(--brown); line-height: 1;
+    }
+    #view-incoming .status-area {
+      margin-left: auto; display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+    }
+
+    /* Crowding box */
+    .crowding-box {
+      width: 390px; height: 186px; flex-shrink: 0;
+      display: flex; flex-direction: column; align-items: stretch; justify-content: center;
+      gap: 10px; padding: 14px 20px 12px; border-radius: 10px;
+    }
+    .crowd-spacious { background: var(--sage); }
+    .crowd-normal   { background: #A8C9AA; }
+    .crowd-crowded  { background: var(--tan); }
+    .crowd-full     { background: #9B4333; }
+    .crowd-top { display: flex; align-items: center; gap: 10px; }
+    .crowd-icon { width: 36px; height: 36px; flex-shrink: 0; color: var(--navy); }
+    .crowd-full .crowd-icon { color: #fff; }
+    .crowd-tag {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 34px; color: var(--navy); line-height: 1;
+    }
+    .crowd-full .crowd-tag { color: #fff; }
+    .crowd-seats {
+      margin-left: auto; font-family: 'Roboto', sans-serif;
+      font-weight: 700; font-size: 28px; color: var(--navy); opacity: 0.72; white-space: nowrap;
+    }
+    .crowd-full .crowd-seats { color: #fff; opacity: 0.9; }
+    .crowd-bar-track { width: 100%; height: 16px; background: rgba(0,0,0,0.12); border-radius: 8px; overflow: hidden; }
+    .crowd-bar-fill { height: 100%; border-radius: 8px; background: rgba(20,46,67,0.38); }
+    .crowd-full .crowd-bar-fill { background: rgba(255,255,255,0.5); }
+    .crowd-dots { display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start; }
+    .cdot { width: 12px; height: 12px; border-radius: 50%; background: rgba(20,46,67,0.16); flex-shrink: 0; }
+    .cdot.on { background: rgba(20,46,67,0.70); }
+    .crowd-full .cdot    { background: rgba(255,255,255,0.20); }
+    .crowd-full .cdot.on { background: rgba(255,255,255,0.90); }
+
+    /* Arrival block (incoming) */
+    #view-incoming .arrival-block {
+      width: 330px; height: 186px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 4px; padding: 0 8px; border-radius: 10px;
+    }
+    #view-incoming .arr-arriving { background: var(--sage); }
+    #view-incoming .arr-zh {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      font-weight: 700; font-size: 72px; color: var(--navy);
+      line-height: 1; text-align: center; white-space: nowrap;
+    }
+    #view-incoming .arrival-block.arr-minutes .arr-zh { font-size: 84px; }
+    #view-incoming .arr-en {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700; font-size: 40px; color: var(--brown);
+      line-height: 1; text-align: center;
+    }
+    #view-incoming .arr-arriving .arr-en { color: var(--navy); opacity: 0.6; }
+    #view-incoming .arr-arriving .arr-zh { animation: arrivePulse 1.3s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 1 — LANDING  (bus schedule with crowding)
+══════════════════════════════════════════════════════ -->
+<div id="view-landing" class="view active">
+  <div id="sw-landing" class="sw">
+    <div class="panel">
+
+      <!-- Header: click → routes view -->
+      <div class="stop-header nav-header"
+           data-hint="點此查看路線圖　▶"
+           onclick="goTo('view-routes')">
+        <div class="stop-name-block">
+          <span class="stop-name-zh">塔悠路</span>
+          <span class="stop-name-en">Tayou Road</span>
+        </div>
+        <div class="clock-block">
+          <span class="clock-time" id="clock-time-l">--:--:--</span>
+          <span class="clock-date" id="clock-date-l">----年--月--日</span>
+        </div>
+      </div>
+
+      <!-- Safety Banner -->
+      <div class="safety-banner">
+        <div class="safety-item">
+          <svg class="safety-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="5" r="2.5"/>
+            <path d="M5 21v-3a3 3 0 013-3h0a3 3 0 013 3v3"/>
+            <circle cx="16" cy="5" r="2.5"/>
+            <path d="M13 21v-3a3 3 0 013-3h0a3 3 0 013 3v3"/>
+            <line x1="8" y1="13" x2="16" y2="13" stroke-dasharray="2 2"/>
+          </svg>
+          <span class="safety-text">請依序候車</span>
+        </div>
+        <div class="safety-sep"></div>
+        <div class="safety-item">
+          <svg class="safety-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>
+          </svg>
+          <span class="safety-text">上下車注意安全</span>
+        </div>
+        <div class="safety-sep"></div>
+        <div class="safety-item">
+          <svg class="safety-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+          <span class="safety-text">請留意隨身物品</span>
+        </div>
+      </div>
+
+      <!-- Column labels -->
+      <div class="col-labels">
+        <span class="lbl lbl-route">路線</span>
+        <span class="lbl lbl-dest">目的地　Destination</span>
+        <span class="lbl lbl-status">餘座　Seats</span>
+        <span class="lbl lbl-arr">到站時間　Arrival</span>
+      </div>
+
+      <!-- Bus rows -->
+      <div class="bus-list">
+
+        <!-- Row 1 · 672 · Arriving · spacious 18 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-navy"><span class="route-number">672</span></div>
+          <div class="destination">
+            <span class="dest-main">往 內湖</span>
+            <span class="dest-sub">via 西松</span>
+          </div>
+          <div class="status-area">
+            <div class="capacity cap-spacious">
+              <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/>
+              </svg>
+              <span class="cap-count">18</span>
+              <span class="cap-label">寬鬆</span>
+            </div>
+            <!-- GREEN BLOCK: click → incoming view -->
+            <div class="arrival-block arr-arriving" onclick="goTo('view-incoming')" title="點此查看即將進站">
+              <span class="arr-zh">即將進站</span>
+              <span class="arr-en">Arriving</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2 · 602 · Arriving · normal 9 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-orange"><span class="route-number">602</span></div>
+          <div class="destination">
+            <span class="dest-main">往 內湖</span>
+            <span class="dest-sub">via 西松</span>
+          </div>
+          <div class="status-area">
+            <div class="capacity cap-normal">
+              <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/>
+              </svg>
+              <span class="cap-count">9</span>
+              <span class="cap-label">正常</span>
+            </div>
+            <!-- GREEN BLOCK: click → incoming view -->
+            <div class="arrival-block arr-arriving" onclick="goTo('view-incoming')" title="點此查看即將進站">
+              <span class="arr-zh">即將進站</span>
+              <span class="arr-en">Arriving</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3 · 682 · 3 min · crowded 3 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-amber"><span class="route-number">682</span></div>
+          <div class="destination">
+            <span class="dest-main">往 內湖</span>
+            <span class="dest-sub">via 西松</span>
+          </div>
+          <div class="status-area">
+            <div class="capacity cap-crowded">
+              <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/>
+              </svg>
+              <span class="cap-count">3</span>
+              <span class="cap-label">擁擠</span>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">3 分鐘</span>
+              <span class="arr-en">3 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4 · 652 · 8 min · full 0 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-red"><span class="route-number">652</span></div>
+          <div class="destination">
+            <span class="dest-main">往 內湖</span>
+            <span class="dest-sub">via 西松</span>
+          </div>
+          <div class="status-area">
+            <div class="capacity cap-full">
+              <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              <span class="cap-count">0</span>
+              <span class="cap-label">滿載</span>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">8 分鐘</span>
+              <span class="arr-en">8 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 5 · 672 · 12 min · normal 14 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-navy"><span class="route-number">672</span></div>
+          <div class="destination">
+            <span class="dest-main">往 內湖</span>
+            <span class="dest-sub">via 西松</span>
+          </div>
+          <div class="status-area">
+            <div class="capacity cap-normal">
+              <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/>
+              </svg>
+              <span class="cap-count">14</span>
+              <span class="cap-label">正常</span>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">12 分鐘</span>
+              <span class="arr-en">12 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 6 · 672 · 18 min · spacious 22 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-navy"><span class="route-number">672</span></div>
+          <div class="destination">
+            <span class="dest-main">往 內湖</span>
+            <span class="dest-sub">via 西松</span>
+          </div>
+          <div class="status-area">
+            <div class="capacity cap-spacious">
+              <svg class="cap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/>
+              </svg>
+              <span class="cap-count">22</span>
+              <span class="cap-label">寬鬆</span>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">18 分鐘</span>
+              <span class="arr-en">18 min</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /bus-list -->
+    </div><!-- /panel -->
+  </div><!-- /sw-landing -->
+</div><!-- /view-landing -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 2 — ROUTES  (stop-chain diagram)
+══════════════════════════════════════════════════════ -->
+<div id="view-routes" class="view">
+  <div id="sw-routes" class="sw">
+    <div class="panel">
+
+      <!-- Header: click → landing view -->
+      <div class="stop-header nav-header"
+           data-hint="◀　點此返回時刻表"
+           onclick="goTo('view-landing')">
+        <div class="stop-name-block">
+          <span class="stop-name-zh">塔悠路</span>
+          <span class="stop-name-en">Tayou Road</span>
+        </div>
+      </div>
+
+      <!-- Section: 營運中 -->
+      <div class="section section-in-service">
+        <div class="section-label-row">
+          <span class="section-status">營運中</span>
+        </div>
+        <div class="bus-list">
+
+          <div class="bus-row">
+            <div class="row-left">
+              <div class="route-badge badge-plain"><span class="route-number">672</span></div>
+              <div class="destination">
+                <span class="dest-main">往 內湖</span>
+                <span class="dest-sub">via 西松</span>
+              </div>
+            </div>
+            <div class="stop-cols">
+              <div class="stop-col"><span class="stop-label">松山</span></div>
+              <div class="stop-col"><span class="stop-label">松仁</span></div>
+              <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+              <div class="stop-col"><span class="stop-label">內湖</span></div>
+            </div>
+          </div>
+
+          <div class="bus-row">
+            <div class="row-left">
+              <div class="route-badge badge-orange"><span class="route-number">602</span></div>
+              <div class="destination">
+                <span class="dest-main">往 內湖</span>
+                <span class="dest-sub">via 西松</span>
+              </div>
+            </div>
+            <div class="stop-cols">
+              <div class="stop-col"><span class="stop-label">松山</span></div>
+              <div class="stop-col"><span class="stop-label">松仁</span></div>
+              <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+              <div class="stop-col"><span class="stop-label">內湖</span></div>
+            </div>
+          </div>
+
+          <div class="bus-row">
+            <div class="row-left">
+              <div class="route-badge badge-yellow"><span class="route-number">682</span></div>
+              <div class="destination">
+                <span class="dest-main">往 內湖</span>
+                <span class="dest-sub">via 西松</span>
+              </div>
+            </div>
+            <div class="stop-cols">
+              <div class="stop-col"><span class="stop-label">松山</span></div>
+              <div class="stop-col"><span class="stop-label">松仁</span></div>
+              <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+              <div class="stop-col"><span class="stop-label">內湖</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /section 營運中 -->
+
+      <!-- Section: 今日未營運 -->
+      <div class="section section-not-today">
+        <div class="section-label-row">
+          <span class="section-status">今日未營運</span>
+        </div>
+        <div class="bus-list">
+
+          <div class="bus-row">
+            <div class="row-left">
+              <div class="route-badge badge-red"><span class="route-number">652</span></div>
+              <div class="destination">
+                <span class="dest-main">往 內湖</span>
+                <span class="dest-sub">via 西松</span>
+              </div>
+            </div>
+            <div class="stop-cols">
+              <div class="stop-col"><span class="stop-label">松山</span></div>
+              <div class="stop-col"><span class="stop-label">松仁</span></div>
+              <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+              <div class="stop-col"><span class="stop-label">內湖</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /section 今日未營運 -->
+
+    </div><!-- /panel -->
+  </div><!-- /sw-routes -->
+</div><!-- /view-routes -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     VIEW 3 — INCOMING  (bus approaching with animation)
+══════════════════════════════════════════════════════ -->
+<div id="view-incoming" class="view">
+  <div id="sw-incoming" class="sw">
+    <div class="panel">
+
+      <!-- Header: click → landing view -->
+      <div class="stop-header nav-header"
+           data-hint="◀　點此返回時刻表"
+           onclick="goTo('view-landing')">
+        <div class="stop-name-block">
+          <span class="stop-name-zh">塔悠路</span>
+          <span class="stop-name-en">Tayou Road</span>
+        </div>
+        <div class="clock-block">
+          <span class="clock-time" id="clock-time-i">--:--:--</span>
+          <span class="clock-date" id="clock-date-i">----年--月--日</span>
+        </div>
+      </div>
+
+      <!-- Route Map -->
+      <div class="route-map">
+        <div class="route-map-header">
+          <span class="route-map-label">路線圖　Route Map</span>
+          <div class="route-map-badge">672</div>
+          <span class="route-map-title">往 內湖　Neihu Direction</span>
+          <span class="route-map-via">via 西松　Xisong</span>
+        </div>
+        <div class="route-timeline">
+          <div class="rt-line-base"></div>
+          <div class="rt-line-done"></div>
+          <div class="bus-on-route">
+            <svg width="74" height="38" viewBox="0 0 74 38">
+              <rect x="2" y="6" width="62" height="24" rx="5" fill="#C47B3A"/>
+              <rect x="7"  y="10" width="11" height="11" rx="2" fill="#F2EADF" opacity="0.85"/>
+              <rect x="22" y="10" width="11" height="11" rx="2" fill="#F2EADF" opacity="0.85"/>
+              <rect x="37" y="10" width="11" height="11" rx="2" fill="#F2EADF" opacity="0.85"/>
+              <rect x="52" y="8"  width="10" height="16" rx="3" fill="#A05218"/>
+              <rect x="54" y="10" width="6"  height="10" rx="2" fill="#F2EADF" opacity="0.7"/>
+              <text x="32" y="24" font-family="Roboto" font-weight="700" font-size="9" fill="#F2EADF" text-anchor="middle">672</text>
+              <circle cx="14" cy="33" r="5" fill="#2C2C2C"/>
+              <circle cx="14" cy="33" r="2.5" fill="#8C6B4F"/>
+              <circle cx="52" cy="33" r="5" fill="#2C2C2C"/>
+              <circle cx="52" cy="33" r="2.5" fill="#8C6B4F"/>
+            </svg>
+          </div>
+          <div class="route-stops">
+            <div class="route-stop"><div class="rt-dot done"></div><span class="rt-stop-name done">成功國宅</span></div>
+            <div class="route-stop"><div class="rt-dot done"></div><span class="rt-stop-name done">健康路口</span></div>
+            <div class="route-stop"><div class="rt-dot here"></div><span class="rt-stop-name here">▼ 塔悠路</span></div>
+            <div class="route-stop"><div class="rt-dot"></div><span class="rt-stop-name">南港路口</span></div>
+            <div class="route-stop"><div class="rt-dot"></div><span class="rt-stop-name">西松</span></div>
+            <div class="route-stop"><div class="rt-dot"></div><span class="rt-stop-name">東湖路</span></div>
+            <div class="route-stop"><div class="rt-dot"></div><span class="rt-stop-name">內湖</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Incoming bus animation -->
+      <div class="incoming-section">
+        <div class="inc-label">
+          <div class="inc-badge">672</div>
+          <div class="inc-info">
+            <span class="inc-status">即將進站</span>
+            <span class="inc-dest">往 內湖　via 西松</span>
+          </div>
+        </div>
+        <div class="inc-bus-wrap">
+          <svg width="240" height="118" viewBox="0 0 240 118">
+            <rect x="8"  y="14" width="200" height="76" rx="10" fill="#142E43"/>
+            <rect x="20"  y="24" width="30" height="30" rx="4" fill="#8ABF92" opacity="0.85"/>
+            <rect x="58"  y="24" width="30" height="30" rx="4" fill="#8ABF92" opacity="0.85"/>
+            <rect x="96"  y="24" width="30" height="30" rx="4" fill="#8ABF92" opacity="0.85"/>
+            <rect x="134" y="24" width="30" height="30" rx="4" fill="#8ABF92" opacity="0.85"/>
+            <rect x="172" y="18" width="32" height="60" rx="7" fill="#1C3F58"/>
+            <rect x="176" y="24" width="22" height="34" rx="4" fill="#8ABF92" opacity="0.75"/>
+            <rect x="200" y="20" width="10" height="16" rx="3" fill="#FFF0A0" opacity="0.95"/>
+            <rect x="204" y="68" width="14" height="14" rx="3" fill="#D9B391"/>
+            <rect x="44"  y="62" width="116" height="26" rx="5" fill="#C47B3A"/>
+            <text x="102" y="80" font-family="Roboto" font-weight="700" font-size="18" fill="#F2EADF" text-anchor="middle">672 → 內湖</text>
+            <rect x="128" y="58" width="18" height="32" rx="2" fill="#1C3F58"/>
+            <circle cx="42"  cy="102" r="16" fill="#1A1A1A"/>
+            <circle cx="42"  cy="102" r="8"  fill="#5C3D28"/>
+            <circle cx="42"  cy="102" r="3"  fill="#1A1A1A"/>
+            <circle cx="172" cy="102" r="16" fill="#1A1A1A"/>
+            <circle cx="172" cy="102" r="8"  fill="#5C3D28"/>
+            <circle cx="172" cy="102" r="3"  fill="#1A1A1A"/>
+          </svg>
+        </div>
+        <div class="inc-road"><div class="inc-road-line"></div></div>
+      </div>
+
+      <!-- Safety Banner -->
+      <div class="safety-banner">
+        <div class="safety-item">
+          <svg class="safety-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="5" r="2.5"/>
+            <path d="M5 21v-3a3 3 0 013-3h0a3 3 0 013 3v3"/>
+            <circle cx="16" cy="5" r="2.5"/>
+            <path d="M13 21v-3a3 3 0 013-3h0a3 3 0 013 3v3"/>
+            <line x1="8" y1="13" x2="16" y2="13" stroke-dasharray="2 2"/>
+          </svg>
+          <span class="safety-text">請依序候車</span>
+        </div>
+        <div class="safety-sep"></div>
+        <div class="safety-item">
+          <svg class="safety-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/>
+          </svg>
+          <span class="safety-text">上下車注意安全</span>
+        </div>
+        <div class="safety-sep"></div>
+        <div class="safety-item">
+          <svg class="safety-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+          <span class="safety-text">請留意隨身物品</span>
+        </div>
+      </div>
+
+      <!-- Column labels -->
+      <div class="col-labels">
+        <span class="lbl lbl-route">路線</span>
+        <span class="lbl lbl-dest">目的地　Destination</span>
+        <span class="lbl lbl-crowd">擁擠程度　Crowding</span>
+        <span class="lbl lbl-arr">到站時間　Arrival</span>
+      </div>
+
+      <!-- Bus rows -->
+      <div class="bus-list">
+
+        <!-- Row 1 · 672 · Arriving · spacious 18 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-navy"><span class="route-number">672</span></div>
+          <div class="destination"><span class="dest-main">往 內湖</span><span class="dest-sub">via 西松</span></div>
+          <div class="status-area">
+            <div class="crowding-box crowd-spacious">
+              <div class="crowd-top">
+                <svg class="crowd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+                <span class="crowd-tag">寬鬆</span><span class="crowd-seats">剩 18 席</span>
+              </div>
+              <div class="crowd-bar-track"><div class="crowd-bar-fill" style="width:40%"></div></div>
+              <div class="crowd-dots" data-total="30" data-on="12"></div>
+            </div>
+            <div class="arrival-block arr-arriving">
+              <span class="arr-zh">即將進站</span><span class="arr-en">Arriving</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2 · 602 · Arriving · normal 9 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-orange"><span class="route-number">602</span></div>
+          <div class="destination"><span class="dest-main">往 內湖</span><span class="dest-sub">via 西松</span></div>
+          <div class="status-area">
+            <div class="crowding-box crowd-normal">
+              <div class="crowd-top">
+                <svg class="crowd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+                <span class="crowd-tag">正常</span><span class="crowd-seats">剩 9 席</span>
+              </div>
+              <div class="crowd-bar-track"><div class="crowd-bar-fill" style="width:70%"></div></div>
+              <div class="crowd-dots" data-total="30" data-on="21"></div>
+            </div>
+            <div class="arrival-block arr-arriving">
+              <span class="arr-zh">即將進站</span><span class="arr-en">Arriving</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3 · 682 · 3 min · crowded 3 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-amber"><span class="route-number">682</span></div>
+          <div class="destination"><span class="dest-main">往 內湖</span><span class="dest-sub">via 西松</span></div>
+          <div class="status-area">
+            <div class="crowding-box crowd-crowded">
+              <div class="crowd-top">
+                <svg class="crowd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+                <span class="crowd-tag">擁擠</span><span class="crowd-seats">剩 3 席</span>
+              </div>
+              <div class="crowd-bar-track"><div class="crowd-bar-fill" style="width:90%"></div></div>
+              <div class="crowd-dots" data-total="30" data-on="27"></div>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">3 分鐘</span><span class="arr-en">3 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4 · 652 · 8 min · full -->
+        <div class="bus-row">
+          <div class="route-badge badge-red"><span class="route-number">652</span></div>
+          <div class="destination"><span class="dest-main">往 內湖</span><span class="dest-sub">via 西松</span></div>
+          <div class="status-area">
+            <div class="crowding-box crowd-full">
+              <div class="crowd-top">
+                <svg class="crowd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <span class="crowd-tag">滿載</span><span class="crowd-seats">剩 0 席</span>
+              </div>
+              <div class="crowd-bar-track"><div class="crowd-bar-fill" style="width:100%"></div></div>
+              <div class="crowd-dots" data-total="30" data-on="30"></div>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">8 分鐘</span><span class="arr-en">8 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 5 · 672 · 12 min · normal 14 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-navy"><span class="route-number">672</span></div>
+          <div class="destination"><span class="dest-main">往 內湖</span><span class="dest-sub">via 西松</span></div>
+          <div class="status-area">
+            <div class="crowding-box crowd-normal">
+              <div class="crowd-top">
+                <svg class="crowd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+                <span class="crowd-tag">正常</span><span class="crowd-seats">剩 14 席</span>
+              </div>
+              <div class="crowd-bar-track"><div class="crowd-bar-fill" style="width:53%"></div></div>
+              <div class="crowd-dots" data-total="30" data-on="16"></div>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">12 分鐘</span><span class="arr-en">12 min</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 6 · 672 · 18 min · spacious 22 seats -->
+        <div class="bus-row">
+          <div class="route-badge badge-navy"><span class="route-number">672</span></div>
+          <div class="destination"><span class="dest-main">往 內湖</span><span class="dest-sub">via 西松</span></div>
+          <div class="status-area">
+            <div class="crowding-box crowd-spacious">
+              <div class="crowd-top">
+                <svg class="crowd-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+                <span class="crowd-tag">寬鬆</span><span class="crowd-seats">剩 22 席</span>
+              </div>
+              <div class="crowd-bar-track"><div class="crowd-bar-fill" style="width:27%"></div></div>
+              <div class="crowd-dots" data-total="30" data-on="8"></div>
+            </div>
+            <div class="arrival-block arr-minutes">
+              <span class="arr-zh">18 分鐘</span><span class="arr-en">18 min</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /bus-list -->
+    </div><!-- /panel -->
+  </div><!-- /sw-incoming -->
+</div><!-- /view-incoming -->
+
+
+<script>
+  /* ── Navigation ───────────────────────────────── */
+  function goTo(viewId) {
+    document.querySelectorAll('.view').forEach(function(v) {
+      v.classList.remove('active');
+    });
+    var target = document.getElementById(viewId);
+    target.classList.add('active');
+    window.scrollTo(0, 0);
+    scaleAll();
+  }
+
+  /* ── Scale all wrappers ───────────────────────── */
+  function scaleAll() {
+    var scale = Math.min(1, window.innerWidth / 1415);
+    document.querySelectorAll('.sw').forEach(function(sw) {
+      sw.style.transform = 'scale(' + scale + ')';
+    });
+    /* Size the active view div to match its scaled content */
+    var activeView = document.querySelector('.view.active');
+    if (activeView) {
+      var sw = activeView.querySelector('.sw');
+      if (sw) {
+        activeView.style.height = (sw.offsetHeight * scale) + 'px';
+      }
+    }
+  }
+  scaleAll();
+  window.addEventListener('resize', scaleAll);
+
+  /* ── Live clock ───────────────────────────────── */
+  var weekdays = ['日','一','二','三','四','五','六'];
+  function updateClock() {
+    var now = new Date();
+    var h  = String(now.getHours()).padStart(2,'0');
+    var m  = String(now.getMinutes()).padStart(2,'0');
+    var s  = String(now.getSeconds()).padStart(2,'0');
+    var time = h + ':' + m + ':' + s;
+    var y  = now.getFullYear();
+    var mo = String(now.getMonth() + 1).padStart(2,'0');
+    var d  = String(now.getDate()).padStart(2,'0');
+    var wd = weekdays[now.getDay()];
+    var date = y + '年' + mo + '月' + d + '日　週' + wd;
+    /* Update both clocks (landing + incoming) */
+    ['clock-time-l','clock-time-i'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = time;
+    });
+    ['clock-date-l','clock-date-i'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = date;
+    });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* ── Seat-dot grids (incoming view) ──────────── */
+  document.querySelectorAll('.crowd-dots').forEach(function(el) {
+    var total = parseInt(el.dataset.total, 10);
+    var on    = parseInt(el.dataset.on,    10);
+    for (var i = 0; i < total; i++) {
+      var dot = document.createElement('div');
+      dot.className = 'cdot' + (i < on ? ' on' : '');
+      el.appendChild(dot);
+    }
+  });
+</script>
+
+</body>
+</html>
