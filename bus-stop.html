@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1415">
+  <title>塔悠路 站牌標示</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Roboto:wght@400;700&family=Inter:wght@700&display=swap" rel="stylesheet">
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+  <style>
+    :root {
+      --cream: #F2EADF;
+      --navy:  #142E43;
+      --sage:  #8ABF92;
+      --brown: #8C6B4F;
+      --tan:   #D9B391;
+      --alt:   #E8DFCF;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { background: #4A3525; min-height: 100vh; }
+
+    #scale-wrapper { transform-origin: top left; width: 1415px; }
+
+    /* ── Panel ────────────────────────────── */
+    .panel {
+      width: 1415px;
+      background: var(--cream);
+      border: 4px solid var(--brown);
+      overflow: hidden;
+    }
+
+    /* ── Sticky header ────────────────────── */
+    .stop-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--brown);
+      height: 188px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 48px;
+      border-bottom: 5px solid var(--tan);
+    }
+
+    .stop-name-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stop-name-zh {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700;
+      font-size: 108px;
+      color: var(--cream);
+      line-height: 1;
+    }
+
+    .stop-name-en {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 400;
+      font-size: 36px;
+      color: var(--tan);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Section container ────────────────── */
+    .section { background: var(--cream); }
+
+    /* The label row sits above the bus rows */
+    .section-label-row {
+      height: 86px;
+      display: flex;
+      align-items: center;
+      padding: 0 44px 0 28px;
+      border-bottom: 3px solid var(--brown);
+    }
+
+    /* Green strip for in-service, tan strip for not-today */
+    .section-in-service .section-label-row { background: var(--sage); }
+    .section-not-today  .section-label-row { background: var(--tan); }
+
+    .section-status {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700;
+      font-size: 48px;
+      color: var(--navy);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* ── Bus list ─────────────────────────── */
+    .bus-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Single bus row ───────────────────── */
+    .bus-row {
+      height: 238px;
+      display: flex;
+      align-items: center;
+      padding: 0 44px 0 28px;
+      border-bottom: 2px solid var(--tan);
+    }
+
+    .bus-row:last-child { border-bottom: none; }
+
+    .bus-list .bus-row:nth-child(odd)  { background: var(--cream); }
+    .bus-list .bus-row:nth-child(even) { background: var(--alt); }
+
+    /* Rows under "not operating today" are muted */
+    .section-not-today .bus-row { background: var(--cream); }
+
+    /* ── Left group: badge + destination ──── */
+    .row-left {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      flex-shrink: 0;
+    }
+
+    /* ── Route badge ──────────────────────── */
+    .route-badge {
+      width: 192px;
+      height: 192px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .badge-plain  { background: var(--navy); }
+    .badge-orange { background: #C47B3A; }
+    .badge-yellow { background: #C9A02A; }
+    .badge-red    { background: #9B4333; }
+
+    .route-number {
+      font-family: 'Roboto', sans-serif;
+      font-weight: 700;
+      font-size: 96px;
+      color: var(--cream);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* ── Destination text ─────────────────── */
+    .destination {
+      width: 390px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .dest-main {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700;
+      font-size: 78px;
+      color: var(--navy);
+      line-height: 1;
+    }
+
+    .dest-sub {
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 400;
+      font-size: 44px;
+      color: var(--brown);
+      line-height: 1;
+    }
+
+    /* ── Stop-chain columns ───────────────── */
+    .stop-cols {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .stop-col {
+      width: 74px;
+      height: 192px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--navy);
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .section-not-today .stop-col { background: var(--brown); opacity: 0.6; }
+
+    .stop-label {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      font-family: 'Roboto', 'Noto Sans TC', sans-serif;
+      font-weight: 700;
+      font-size: 38px;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div id="scale-wrapper">
+  <div class="panel">
+
+    <!-- ── Sticky stop-name header ──────────────── -->
+    <div class="stop-header">
+      <div class="stop-name-block">
+        <span class="stop-name-zh">塔悠路</span>
+        <span class="stop-name-en">Tayou Road</span>
+      </div>
+    </div>
+
+    <!-- ── Section: 營運中 ──────────────────────── -->
+    <div class="section section-in-service">
+      <div class="section-label-row">
+        <span class="section-status">營運中</span>
+      </div>
+      <div class="bus-list">
+
+        <!-- Row 1 · 672 -->
+        <div class="bus-row">
+          <div class="row-left">
+            <div class="route-badge badge-plain">
+              <span class="route-number">672</span>
+            </div>
+            <div class="destination">
+              <span class="dest-main">往 內湖</span>
+              <span class="dest-sub">via 西松</span>
+            </div>
+          </div>
+          <div class="stop-cols">
+            <div class="stop-col"><span class="stop-label">松山</span></div>
+            <div class="stop-col"><span class="stop-label">松仁</span></div>
+            <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+            <div class="stop-col"><span class="stop-label">內湖</span></div>
+          </div>
+        </div>
+
+        <!-- Row 2 · 602 · orange badge -->
+        <div class="bus-row">
+          <div class="row-left">
+            <div class="route-badge badge-orange">
+              <span class="route-number">602</span>
+            </div>
+            <div class="destination">
+              <span class="dest-main">往 內湖</span>
+              <span class="dest-sub">via 西松</span>
+            </div>
+          </div>
+          <div class="stop-cols">
+            <div class="stop-col"><span class="stop-label">松山</span></div>
+            <div class="stop-col"><span class="stop-label">松仁</span></div>
+            <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+            <div class="stop-col"><span class="stop-label">內湖</span></div>
+          </div>
+        </div>
+
+        <!-- Row 3 · 682 · yellow badge -->
+        <div class="bus-row">
+          <div class="row-left">
+            <div class="route-badge badge-yellow">
+              <span class="route-number">682</span>
+            </div>
+            <div class="destination">
+              <span class="dest-main">往 內湖</span>
+              <span class="dest-sub">via 西松</span>
+            </div>
+          </div>
+          <div class="stop-cols">
+            <div class="stop-col"><span class="stop-label">松山</span></div>
+            <div class="stop-col"><span class="stop-label">松仁</span></div>
+            <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+            <div class="stop-col"><span class="stop-label">內湖</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /section 營運中 -->
+
+    <!-- ── Section: 今日未營運 ───────────────────── -->
+    <div class="section section-not-today">
+      <div class="section-label-row">
+        <span class="section-status">今日未營運</span>
+      </div>
+      <div class="bus-list">
+
+        <!-- Row 4 · 652 · red badge -->
+        <div class="bus-row">
+          <div class="row-left">
+            <div class="route-badge badge-red">
+              <span class="route-number">652</span>
+            </div>
+            <div class="destination">
+              <span class="dest-main">往 內湖</span>
+              <span class="dest-sub">via 西松</span>
+            </div>
+          </div>
+          <div class="stop-cols">
+            <div class="stop-col"><span class="stop-label">松山</span></div>
+            <div class="stop-col"><span class="stop-label">松仁</span></div>
+            <div class="stop-col"><span class="stop-label">內北捷運</span></div>
+            <div class="stop-col"><span class="stop-label">內湖</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /section 今日未營運 -->
+
+  </div><!-- /panel -->
+</div><!-- /scale-wrapper -->
+
+<script>
+  function scalePanel() {
+    var wrapper = document.getElementById('scale-wrapper');
+    var scale   = Math.min(1, window.innerWidth / 1415);
+    wrapper.style.transform = 'scale(' + scale + ')';
+    document.body.style.height = (wrapper.offsetHeight * scale) + 'px';
+  }
+  scalePanel();
+  window.addEventListener('resize', scalePanel);
+</script>
+
+</body>
+</html>
