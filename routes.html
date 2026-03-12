@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>塔悠路-路線</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --header-bg:    #9B8C72;
+      --list-bg:      #F0EAD8;
+      --row-alt-bg:   #E8E0CC;
+      --white:        #FFFFFF;
+      --text-dark:    #2A2A2A;
+      --text-muted:   #7A7060;
+
+      --c-672: #253A58;
+      --c-602: #D97820;
+      --c-682: #B8860B;
+      --c-652: #B03030;
+
+      --tag-active-bg:   #253A58;
+      --tag-active-text: #FFFFFF;
+      --tag-inactive-bg: #B0A898;
+      --tag-inactive-text: #E8E0CC;
+
+      --section-operating-bg:    #7AAB8A;
+      --section-operating-text:  #FFFFFF;
+      --section-inactive-bg:     #C0B09A;
+      --section-inactive-text:   #FFFFFF;
+    }
+
+    body {
+      background: #D0C8B4;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: "Roboto", "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    }
+
+    .board {
+      width: 620px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--header-bg);
+      padding: 18px 24px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .back-btn {
+      margin-top: 6px;
+      background: rgba(255,255,255,.2);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 20px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      text-decoration: none;
+      transition: background .15s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,.35); }
+    .header-text .zh { font-size: 38px; font-weight: 900; color: var(--white); letter-spacing: 2px; }
+    .header-text .en { font-size: 14px; color: rgba(255,255,255,.75); margin-top: 2px; letter-spacing: 1px; }
+
+    /* ── SECTION HEADER ── */
+    .section-header {
+      padding: 8px 20px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .section-header.operating  { background: var(--section-operating-bg); color: var(--section-operating-text); }
+    .section-header.inactive   { background: var(--section-inactive-bg);  color: var(--section-inactive-text); }
+
+    /* ── ROUTE ROW ── */
+    .route-list { background: var(--list-bg); }
+    .route-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0,0,0,.07);
+      background: var(--list-bg);
+    }
+    .route-row:nth-child(even) { background: var(--row-alt-bg); }
+
+    .route-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 900;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .route-dest { flex: 1; }
+    .route-dest .main { font-size: 26px; font-weight: 800; color: var(--text-dark); line-height: 1.2; }
+    .route-dest .via  { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+    /* ── STOP TAGS ── */
+    .stop-tags {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .stop-tag {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 13px;
+      font-weight: 700;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      min-width: 32px;
+      min-height: 52px;
+      line-height: 1.3;
+      letter-spacing: 1px;
+    }
+    .stop-tag.active   { background: var(--tag-active-bg);   color: var(--tag-active-text); }
+    .stop-tag.inactive { background: var(--tag-inactive-bg); color: var(--tag-inactive-text); }
+  </style>
+</head>
+<body>
+<div class="board">
+
+  <!-- HEADER -->
+  <header class="header">
+    <a class="back-btn" href="index.html">&#8592;</a>
+    <div class="header-text">
+      <div class="zh">塔悠路-路線</div>
+      <div class="en">Tayou Road</div>
+    </div>
+  </header>
+
+  <!-- 營運中 -->
+  <div class="section-header operating">營運中</div>
+  <div class="route-list">
+
+    <div class="route-row" style="cursor:pointer;" onclick="location.href='routemap.html'">
+      <div class="route-circle" style="background:var(--c-672);">672</div>
+      <div class="route-dest">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="stop-tags">
+        <div class="stop-tag active">松山</div>
+        <div class="stop-tag active">松仁</div>
+        <div class="stop-tag active">內北捷運</div>
+        <div class="stop-tag active">內湖</div>
+      </div>
+    </div>
+
+    <div class="route-row">
+      <div class="route-circle" style="background:var(--c-602);">602</div>
+      <div class="route-dest">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="stop-tags">
+        <div class="stop-tag active">松山</div>
+        <div class="stop-tag active">松仁</div>
+        <div class="stop-tag active">內北捷運</div>
+        <div class="stop-tag active">內湖</div>
+      </div>
+    </div>
+
+    <div class="route-row">
+      <div class="route-circle" style="background:var(--c-682);">682</div>
+      <div class="route-dest">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="stop-tags">
+        <div class="stop-tag active">松山</div>
+        <div class="stop-tag active">松仁</div>
+        <div class="stop-tag active">內北捷運</div>
+        <div class="stop-tag active">內湖</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 今日未營運 -->
+  <div class="section-header inactive">今日未營運</div>
+  <div class="route-list">
+
+    <div class="route-row">
+      <div class="route-circle" style="background:var(--c-652);">652</div>
+      <div class="route-dest">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="stop-tags">
+        <div class="stop-tag inactive">松山</div>
+        <div class="stop-tag inactive">松仁</div>
+        <div class="stop-tag inactive">內北捷運</div>
+        <div class="stop-tag inactive">內湖</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</body>
+</html>

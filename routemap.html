@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>672 路線圖</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --header-bg:   #9B8C72;
+      --legend-bg:   #EDE6D4;
+      --map-bg:      #F0EAD8;
+      --white:       #FFFFFF;
+      --text-dark:   #2A2A2A;
+      --text-muted:  #7A7060;
+      --navy:        #253A58;
+      --teal:        #3A7A5A;
+      --lrt:         #5A8C70;
+      --orange:      #D97820;
+      --highlight:   #B84010;
+      --line-w:      4px;
+      --dot-d:       22px;
+      --dot-r:       11px;  /* dot-d / 2 */
+    }
+
+    body {
+      background: #D0C8B4;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: "Roboto", "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    }
+
+    .board {
+      width: 660px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: var(--header-bg);
+      padding: 16px 20px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .back-btn {
+      background: rgba(255,255,255,.2);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 18px;
+      width: 34px; height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,.35); }
+    .header-title .zh { font-size: 30px; font-weight: 900; color: #fff; letter-spacing: 1px; }
+    .header-title .en { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 2px; letter-spacing: .5px; }
+
+    /* ── LEGEND ── */
+    .legend {
+      background: var(--legend-bg);
+      padding: 10px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      border-bottom: 1px solid rgba(0,0,0,.1);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    .ld { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+    .ld.terminus  { background: var(--navy); }
+    .ld.regular   { background: #fff; border: 2.5px solid var(--navy); }
+    .ld.mrt       { background: var(--teal); }
+    .ld.lrt       { background: var(--lrt); }
+    .ld.lowfloor  { background: var(--highlight); }
+
+    /* ── MAP AREA ── */
+    .map-area {
+      background: var(--map-bg);
+      padding: 20px 16px 28px;
+      overflow-x: auto;
+    }
+
+    /* ── SNAKE TRACK ── */
+    .snake-track { min-width: 580px; }
+
+    /* Each row of stops */
+    .route-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: relative;
+    }
+    .route-row.rtl { flex-direction: row-reverse; }
+
+    /* Horizontal connecting line sits at dot-center height */
+    .route-row .h-line {
+      position: absolute;
+      top: var(--dot-r);
+      left: var(--dot-r);
+      right: var(--dot-r);
+      height: var(--line-w);
+      background: var(--navy);
+      z-index: 0;
+    }
+
+    /* Vertical tail drawn INSIDE the route-row, from dot-centre to row bottom */
+    /* sits at z-index:0 so dots/labels (z-index:1) paint above it             */
+    .route-row.ltr.conn::after,
+    .route-row.rtl::after {
+      content: '';
+      position: absolute;
+      top: var(--dot-r);   /* start at dot centre */
+      bottom: 0;
+      width: var(--line-w);
+      background: var(--navy);
+      z-index: 0;
+    }
+    .route-row.ltr.conn::after { right: var(--dot-r); }
+    .route-row.rtl::after      { left:  var(--dot-r); }
+
+    /* Vertical connectors between rows */
+    .v-conn {
+      height: 52px;
+      position: relative;
+      z-index: 0;
+    }
+    .v-conn.right::before,
+    .v-conn.left::before {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0;
+      width: var(--line-w);
+      background: var(--navy);
+    }
+    .v-conn.right::before { right: var(--dot-r); }
+    .v-conn.left::before  { left:  var(--dot-r); }
+
+    /* ── STOP NODE ── */
+    .stop {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .dot {
+      width:  var(--dot-d);
+      height: var(--dot-d);
+      border-radius: 50%;
+      border: 3px solid var(--navy);
+      background: var(--white);
+      flex-shrink: 0;
+      margin-bottom: 5px;
+    }
+    .dot.terminus  { background: var(--navy);      border-color: var(--navy); }
+    .dot.mrt       { background: var(--teal);      border-color: var(--teal); }
+    .dot.lrt       { background: var(--lrt);       border-color: var(--lrt); }
+    .dot.youbike   { background: var(--orange);    border-color: var(--orange); }
+    .dot.lowfloor  { background: var(--highlight); border-color: var(--highlight); }
+
+    .lbl {
+      font-size: 10px;
+      text-align: center;
+      max-width: 66px;
+      line-height: 1.35;
+      color: var(--text-dark);
+      word-break: keep-all;
+      overflow-wrap: break-word;
+      background: var(--map-bg); /* masks the connector line behind labels */
+      position: relative;        /* ensure it paints above the ::after line  */
+    }
+    .lbl.terminus-lbl { font-weight: 900; color: var(--navy); font-size: 11px; }
+    .lbl.lowfloor-lbl { color: var(--highlight); font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="board">
+
+  <!-- HEADER -->
+  <header class="header">
+    <a class="back-btn" href="routes.html">&#8592;</a>
+    <div class="header-title">
+      <div class="zh">672 路線圖</div>
+      <div class="en">Route Map</div>
+    </div>
+  </header>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="ld terminus"></div>起訖點</div>
+    <div class="legend-item"><div class="ld regular"></div>一般停靠站</div>
+    <div class="legend-item"><div class="ld mrt"></div>捷運站</div>
+    <div class="legend-item"><div class="ld lrt"></div>輕軌站</div>
+    <div class="legend-item"><div class="ld lowfloor"></div>低地板公車站</div>
+  </div>
+
+  <!-- ROUTE MAP -->
+  <div class="map-area">
+    <div class="snake-track">
+
+      <!-- ── ROW 1: LTR (美麗華 → 植福宮) ── -->
+      <div class="route-row ltr conn">
+        <div class="h-line"></div>
+        <div class="stop"><div class="dot terminus"></div><div class="lbl terminus-lbl">美麗華<br>(植福)</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">敬業四路</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">大直美堤花園二</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">大直美堤花園三</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">明水路口</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">明水路一</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">自強隧道</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">植福宮</div></div>
+      </div>
+      <div class="v-conn right"></div>
+
+      <!-- ── ROW 2: RTL (捷運大直站 → 濟南路二段) ── -->
+      <div class="route-row rtl">
+        <div class="h-line"></div>
+        <div class="stop"><div class="dot mrt"></div><div class="lbl">捷運大直站</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">大直高中</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">空軍司令部</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">忠烈祠</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">中央電台</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">圓山大飯店</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">濟南路二段</div></div>
+      </div>
+      <div class="v-conn left"></div>
+
+      <!-- ── ROW 3: LTR (臺北南大 → 羅斯福金門街口) ── -->
+      <div class="route-row ltr conn">
+        <div class="h-line"></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">臺北南大<br>(濟南)</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">成功中學<br>(濟南)</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">開南中學</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">仁愛林森路口</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">羅斯福潮州街口</div></div>
+        <div class="stop"><div class="dot mrt"></div><div class="lbl">捷運古亭站<br>(羅斯福)</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">羅斯福金門街口</div></div>
+      </div>
+      <div class="v-conn right"></div>
+
+      <!-- ── ROW 4: RTL (羅斯福浦城街口 → 福和國中) ── -->
+      <div class="route-row rtl">
+        <div class="h-line"></div>
+        <div class="stop"><div class="dot lowfloor"></div><div class="lbl lowfloor-lbl">羅斯福浦城街口</div></div>
+        <div class="stop"><div class="dot lowfloor"></div><div class="lbl lowfloor-lbl">捷運台電大樓站</div></div>
+        <div class="stop"><div class="dot lowfloor"></div><div class="lbl lowfloor-lbl">台電大樓</div></div>
+        <div class="stop"><div class="dot lowfloor"></div><div class="lbl lowfloor-lbl">捷運公館站</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">水源市場</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">福和橋<br>(林森路)</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">福和國中</div></div>
+      </div>
+      <div class="v-conn left"></div>
+
+      <!-- ── ROW 5: LTR (永利路 → 智光商職) ── -->
+      <div class="route-row ltr conn">
+        <div class="h-line"></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">永利路</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">金銀大廈</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">永和國小</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">得和路口</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">中興新村</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">中興二村</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">智光商職</div></div>
+      </div>
+      <div class="v-conn right"></div>
+
+      <!-- ── ROW 6: RTL (景新街 → 安和路二段) ── -->
+      <div class="route-row rtl">
+        <div class="h-line"></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">景新街</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">三介廟</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">新和國小</div></div>
+        <div class="stop"><div class="dot lrt"></div><div class="lbl">輕軌新和國小站<br>(水工大樓)</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">永平里</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">陽光運動公園<br>(新店花市)</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">安和路二段</div></div>
+      </div>
+      <div class="v-conn left"></div>
+
+      <!-- ── ROW 7: LTR (石頭厝 → 及人中學) ── -->
+      <div class="route-row ltr">
+        <div class="h-line"></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">石頭厝</div></div>
+        <div class="stop"><div class="dot lrt"></div><div class="lbl">輕軌陽光運動公園站</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">光華街口</div></div>
+        <div class="stop"><div class="dot"></div><div class="lbl">十四份</div></div>
+        <div class="stop"><div class="dot terminus"></div><div class="lbl terminus-lbl">及人中學</div></div>
+      </div>
+
+    </div><!-- /.snake-track -->
+  </div><!-- /.map-area -->
+
+</div><!-- /.board -->
+</body>
+</html>

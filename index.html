@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>塔悠路 公車站牌</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Tokens ── */
+    :root {
+      --header-bg:      #9B8C72;
+      --dark-bg:        #1E2C3A;
+      --announce-bg:    #EDE6D4;
+      --list-bg:        #F0EAD8;
+      --row-alt-bg:     #E8E0CC;
+      --white:          #FFFFFF;
+      --text-dark:      #2A2A2A;
+      --text-muted:     #7A7060;
+
+      /* route badge colours */
+      --c-672a:  #3D7FA8;   /* teal-blue  */
+      --c-602:   #D97820;   /* orange     */
+      --c-682:   #B8860B;   /* gold       */
+      --c-652:   #B03030;   /* crimson    */
+      --c-672b:  #253A58;   /* dark navy  */
+      --c-672c:  #3D7FA8;   /* same blue  */
+
+      /* crowding colours */
+      --crowd-loose-bg:    #C6DFBA;
+      --crowd-loose-text:  #2A5C1E;
+      --crowd-loose-dot:   #4A9C35;
+      --crowd-normal-bg:   #D4E8B8;
+      --crowd-normal-text: #3A5C20;
+      --crowd-normal-dot:  #6AAC40;
+      --crowd-busy-bg:     #D4A870;
+      --crowd-busy-text:   #5A2E00;
+      --crowd-busy-dot:    #C07830;
+      --crowd-full-bg:     #8B2020;
+      --crowd-full-text:   #FFFFFF;
+      --crowd-full-dot:    #FFFFFF;
+
+      /* arrival */
+      --arriving-bg:   #4A9C6A;
+      --arriving-text: #FFFFFF;
+      --minutes-text:  #2A2A2A;
+    }
+
+    body {
+      background: #D0C8B4;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px;
+      font-family: "Roboto", "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    }
+
+    /* ── Outer card ── */
+    .board {
+      width: 620px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+
+    /* ═══════════════════════════════
+       HEADER
+    ═══════════════════════════════ */
+    .header {
+      background: var(--header-bg);
+      padding: 18px 24px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      position: relative;   /* needed for overlay */
+    }
+    /* hover overlay — fades in over the whole header */
+    .header-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.38);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity .35s ease-in;
+      text-decoration: none;
+      z-index: 10;
+    }
+    .header:hover .header-overlay { opacity: 1; }
+    .header-overlay .ov-zh {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 2px;
+    }
+    .header-overlay .ov-en {
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+      letter-spacing: 1px;
+    }
+    .header-station {}
+    .header-station .zh { font-size: 40px; font-weight: 900; color: var(--white); letter-spacing: 2px; }
+    .header-station .en { font-size: 14px; color: rgba(255,255,255,.75); margin-top: 2px; letter-spacing: 1px; }
+    .header-clock { text-align: right; }
+    .header-clock .time { font-size: 40px; font-weight: 900; color: var(--white); letter-spacing: 1px; font-variant-numeric: tabular-nums; }
+    .header-clock .date { font-size: 13px; color: rgba(255,255,255,.75); margin-top: 4px; text-align: right; }
+
+    /* ═══════════════════════════════
+       ROUTE MAP
+    ═══════════════════════════════ */
+    .route-map {
+      background: var(--dark-bg);
+      position: relative;
+      overflow: hidden;
+      height: 115px;
+    }
+    .route-map-slide {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      padding: 10px 20px 8px;
+    }
+    .route-map-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .route-map-label {
+      font-size: 12px;
+      color: rgba(255,255,255,.55);
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    .route-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #D97820;
+      color: #fff;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 14px;
+      font-weight: 900;
+      min-width: 36px;
+    }
+    .route-dest {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+    }
+    .route-via {
+      font-size: 13px;
+      color: rgba(255,255,255,.55);
+      margin-left: auto;
+    }
+
+    /* stop line */
+    .stop-line-wrap {
+      position: relative;
+      padding: 4px 0 8px;
+    }
+    .stop-line {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .stop-line::before {
+      content: '';
+      position: absolute;
+      left: calc(100% / 14);
+      right: calc(100% / 14);
+      top: 50%;
+      height: 2px;
+      background: rgba(255,255,255,.25);
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+    .stop-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+    .stop-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.35);
+      border: 2px solid rgba(255,255,255,.5);
+      margin-bottom: 4px;
+      flex-shrink: 0;
+    }
+    .stop-dot.active {
+      background: #fff;
+      border-color: #fff;
+      width: 13px;
+      height: 13px;
+    }
+    .stop-dot.visited {
+      background: rgba(255,255,255,.6);
+      border-color: rgba(255,255,255,.7);
+    }
+    .stop-name {
+      font-size: 10px;
+      color: rgba(255,255,255,.55);
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+    .stop-name.active {
+      color: #fff;
+      font-weight: 700;
+    }
+    .stop-arrow {
+      font-size: 10px;
+      color: #fff;
+      display: block;
+      margin-bottom: 1px;
+    }
+
+    /* ═══════════════════════════════
+       ARRIVING SOON BANNER
+    ═══════════════════════════════ */
+    @keyframes banner-pulse {
+      0%, 100% { background: var(--dark-bg); box-shadow: none; }
+      50%       { background: #1A3D2A;       box-shadow: inset 0 0 0 2px rgba(80,200,120,.45); }
+    }
+    @keyframes status-blink {
+      0%, 45%, 55%, 100% { opacity: 1; }
+      50%                 { opacity: .2; }
+    }
+    .arriving-banner {
+      background: var(--dark-bg);
+      border-top: 1px solid rgba(255,255,255,.08);
+      position: relative;
+      overflow: hidden;
+      height: 78px;
+      animation: banner-pulse 1.4s ease-in-out infinite;
+    }
+    .banner-slide {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 20px 12px;
+    }
+    .arriving-route-badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #2B5A7A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--white);
+      flex-shrink: 0;
+    }
+    .arriving-info { flex: 1; }
+    .arriving-info .status {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--white);
+      line-height: 1.1;
+    }
+    .arriving-info .sub {
+      font-size: 13px;
+      color: rgba(255,255,255,.6);
+      margin-top: 3px;
+    }
+    .arriving-bus-icon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .bus-svg {
+      width: 90px;
+      height: 48px;
+      flex-shrink: 0;
+    }
+    .bus-label {
+      background: #3A8C5A;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    /* ═══════════════════════════════
+       ANNOUNCEMENTS
+    ═══════════════════════════════ */
+    .announcements {
+      background: var(--announce-bg);
+      display: flex;
+      align-items: center;
+      border-top: 2px solid rgba(0,0,0,.08);
+    }
+    .announce-item {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    .announce-item + .announce-item {
+      border-left: 1px solid rgba(0,0,0,.15);
+    }
+    .announce-icon { font-size: 16px; flex-shrink: 0; }
+
+    /* ═══════════════════════════════
+       BUS LIST
+    ═══════════════════════════════ */
+    .list-header {
+      background: var(--announce-bg);
+      display: grid;
+      grid-template-columns: 80px 1fr 180px 130px;
+      padding: 6px 16px;
+      border-top: 1px solid rgba(0,0,0,.1);
+      border-bottom: 1px solid rgba(0,0,0,.1);
+    }
+    .list-header-cell {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .list-header-cell .zh { color: var(--text-dark); font-size: 13px; }
+    .list-header-cell .en { color: var(--text-muted); font-size: 10px; letter-spacing: .5px; }
+
+    /* rows */
+    .bus-list { background: var(--list-bg); }
+    .bus-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 180px 130px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0,0,0,.07);
+      background: var(--list-bg);
+    }
+    .bus-row:nth-child(even) { background: var(--row-alt-bg); }
+
+    /* route circle */
+    .route-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 900;
+      color: #fff;
+    }
+
+    /* destination cell */
+    .dest-cell {}
+    .dest-cell .main { font-size: 22px; font-weight: 800; color: var(--text-dark); line-height: 1.2; }
+    .dest-cell .via  { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* crowding cell */
+    .crowd-cell { display: flex; flex-direction: column; gap: 4px; }
+    .crowd-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 700;
+      width: fit-content;
+    }
+    .crowd-badge .icon { font-size: 13px; }
+    .crowd-dots {
+      display: flex;
+      gap: 3px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .crowd-dots .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .crowd-seats {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-left: 2px;
+      white-space: nowrap;
+    }
+    .crowd-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* crowd variants */
+    .crowd-loose  { background: var(--crowd-loose-bg);  color: var(--crowd-loose-text); }
+    .crowd-normal { background: var(--crowd-normal-bg); color: var(--crowd-normal-text); }
+    .crowd-busy   { background: var(--crowd-busy-bg);   color: var(--crowd-busy-text); }
+    .crowd-full   { background: var(--crowd-full-bg);   color: var(--crowd-full-text); }
+
+    /* arrival cell */
+    .arrival-cell { text-align: right; }
+    .arrival-arriving {
+      display: inline-block;
+      background: var(--arriving-bg);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 10px;
+      text-align: center;
+      line-height: 1.25;
+    }
+    .arrival-arriving .zh { font-size: 18px; font-weight: 900; display: block; }
+    .arrival-arriving .en { font-size: 11px; display: block; font-weight: 600; }
+    .arrival-minutes { text-align: right; }
+    .arrival-minutes .zh { font-size: 26px; font-weight: 900; color: var(--text-dark); line-height: 1.1; }
+    .arrival-minutes .en { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<div class="board">
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <a class="header-station" href="routes.html" style="text-decoration:none;cursor:pointer;" title="查看路線">
+      <div class="zh">塔悠路</div>
+      <div class="en">Tayou Road</div>
+    </a>
+    <div class="header-clock">
+      <div class="time" id="clock">13:45:08</div>
+      <div class="date" id="dateline">2026年03月05日 週四</div>
+    </div>
+    <!-- hover overlay -->
+    <a class="header-overlay" href="routes.html">
+      <div class="ov-zh">顯示經過該站的路線</div>
+      <div class="ov-en">Show All Routes</div>
+    </a>
+  </header>
+
+  <!-- ── ROUTE MAP ── -->
+  <section class="route-map">
+
+    <!-- Route slide 0: 672 -->
+    <div class="route-map-slide" id="route-slide-0">
+      <div class="route-map-title">
+        <span class="route-map-label">路線圖 ROUTE MAP</span>
+        <span class="route-badge" style="background:#D97820;">672</span>
+        <span class="route-dest">往 內湖 Neihu Direction</span>
+        <span class="route-via">via 西松 Xisong</span>
+      </div>
+      <div class="stop-line-wrap">
+        <div class="stop-line">
+          <div class="stop-item"><div class="stop-dot visited"></div><div class="stop-name">成功國宅</div></div>
+          <div class="stop-item"><div class="stop-dot visited"></div><div class="stop-name">健康路口</div></div>
+          <div class="stop-item"><span class="stop-arrow">▼</span><div class="stop-dot active"></div><div class="stop-name active">塔悠路</div></div>
+          <div class="stop-item"><div class="stop-dot"></div><div class="stop-name">南港路口</div></div>
+          <div class="stop-item"><div class="stop-dot"></div><div class="stop-name">西松</div></div>
+          <div class="stop-item"><div class="stop-dot"></div><div class="stop-name">東湖路</div></div>
+          <div class="stop-item"><div class="stop-dot"></div><div class="stop-name">內湖</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Route slide 1: 602 -->
+    <div class="route-map-slide" id="route-slide-1" style="transform:translateX(-100%);">
+      <div class="route-map-title">
+        <span class="route-map-label">路線圖 ROUTE MAP</span>
+        <span class="route-badge" style="background:#D97820;">602</span>
+        <span class="route-dest">往 內湖 Neihu Direction</span>
+        <span class="route-via">via 西松 Xisong</span>
+      </div>
+      <div class="stop-line-wrap">
+        <div class="stop-line">
+          <div class="stop-item"><div class="stop-dot visited"></div><div class="stop-name">松山車站</div></div>
+          <div class="stop-item"><div class="stop-dot visited"></div><div class="stop-name">松仁路口</div></div>
+          <div class="stop-item"><span class="stop-arrow">▼</span><div class="stop-dot active"></div><div class="stop-name active">塔悠路</div></div>
+          <div class="stop-item"><div class="stop-dot"></div><div class="stop-name">西松</div></div>
+          <div class="stop-item"><div class="stop-dot"></div><div class="stop-name">內北捷運</div></div>
+          <div class="stop-item"><div class="stop-dot"></div><div class="stop-name">內湖</div></div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── ARRIVING SOON BANNER ── -->
+  <section class="arriving-banner">
+
+    <!-- Slide 0: 672 -->
+    <div class="banner-slide" id="banner-slide-0">
+      <div class="arriving-route-badge">672</div>
+      <div class="arriving-info">
+        <div class="status">即將進站</div>
+        <div class="sub">往 內湖 via 西松</div>
+      </div>
+      <div class="arriving-bus-icon">
+        <svg class="bus-svg" viewBox="0 0 90 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="8" width="78" height="32" rx="5" fill="#3A7A5A"/>
+          <rect x="8"  y="12" width="14" height="10" rx="2" fill="#A8DCBC"/>
+          <rect x="26" y="12" width="14" height="10" rx="2" fill="#A8DCBC"/>
+          <rect x="44" y="12" width="14" height="10" rx="2" fill="#A8DCBC"/>
+          <rect x="62" y="12" width="12" height="10" rx="2" fill="#A8DCBC"/>
+          <rect x="78" y="20" width="8" height="12" rx="3" fill="#5AAC7A"/>
+          <rect x="54" y="24" width="22" height="14" rx="2" fill="#2E6848"/>
+          <circle cx="18" cy="42" r="6" fill="#1A2A1A"/>
+          <circle cx="18" cy="42" r="3" fill="#3A4A3A"/>
+          <circle cx="62" cy="42" r="6" fill="#1A2A1A"/>
+          <circle cx="62" cy="42" r="3" fill="#3A4A3A"/>
+          <rect x="2" y="36" width="78" height="3" fill="#2E6040"/>
+        </svg>
+        <span class="bus-label">672 → 內湖</span>
+      </div>
+    </div>
+
+    <!-- Slide 1: 602 -->
+    <div class="banner-slide" id="banner-slide-1" style="transform:translateX(-100%);">
+      <div class="arriving-route-badge" style="background:#A05A10;">602</div>
+      <div class="arriving-info">
+        <div class="status">即將進站</div>
+        <div class="sub">往 內湖 via 西松</div>
+      </div>
+      <div class="arriving-bus-icon">
+        <svg class="bus-svg" viewBox="0 0 90 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="8" width="78" height="32" rx="5" fill="#7A4A10"/>
+          <rect x="8"  y="12" width="14" height="10" rx="2" fill="#F0C080"/>
+          <rect x="26" y="12" width="14" height="10" rx="2" fill="#F0C080"/>
+          <rect x="44" y="12" width="14" height="10" rx="2" fill="#F0C080"/>
+          <rect x="62" y="12" width="12" height="10" rx="2" fill="#F0C080"/>
+          <rect x="78" y="20" width="8" height="12" rx="3" fill="#A06020"/>
+          <rect x="54" y="24" width="22" height="14" rx="2" fill="#5A3008"/>
+          <circle cx="18" cy="42" r="6" fill="#1A2A1A"/>
+          <circle cx="18" cy="42" r="3" fill="#3A4A3A"/>
+          <circle cx="62" cy="42" r="6" fill="#1A2A1A"/>
+          <circle cx="62" cy="42" r="3" fill="#3A4A3A"/>
+          <rect x="2" y="36" width="78" height="3" fill="#5A3008"/>
+        </svg>
+        <span class="bus-label" style="background:#A06020;">602 → 內湖</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── ANNOUNCEMENTS ── -->
+  <div class="announcements">
+    <div class="announce-item">
+      <span class="announce-icon">🚶</span>
+      請依序候車
+    </div>
+    <div class="announce-item">
+      <span class="announce-icon">⚠️</span>
+      上下車注意安全
+    </div>
+    <div class="announce-item">
+      <span class="announce-icon">🧳</span>
+      請留意隨身物品
+    </div>
+  </div>
+
+  <!-- ── LIST HEADER ── -->
+  <div class="list-header">
+    <div class="list-header-cell"><span class="zh">路線</span></div>
+    <div class="list-header-cell"><span class="zh">目的地</span><span class="en">Destination</span></div>
+    <div class="list-header-cell"><span class="zh">擁擠程度</span><span class="en">Crowding</span></div>
+    <div class="list-header-cell" style="justify-content:flex-end;align-items:flex-end;display:flex;flex-direction:column;">
+      <span class="zh">到站時間</span><span class="en">Arrival</span>
+    </div>
+  </div>
+
+  <!-- ── BUS ROWS ── -->
+  <div class="bus-list">
+
+    <!-- Row 1: 672 寬鬆 即將進站 -->
+    <div class="bus-row">
+      <div><div class="route-circle" style="background:var(--c-672a);">672</div></div>
+      <div class="dest-cell">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="crowd-cell">
+        <div class="crowd-badge crowd-loose"><span class="icon">🚶</span>寬鬆</div>
+        <div class="crowd-row">
+          <div class="crowd-dots" id="dots-1"></div>
+          <span class="crowd-seats">剩 18 席</span>
+        </div>
+      </div>
+      <div class="arrival-cell">
+        <div class="arrival-arriving">
+          <span class="zh">即將進站</span>
+          <span class="en">Arriving</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: 602 正常 即將進站 -->
+    <div class="bus-row">
+      <div><div class="route-circle" style="background:var(--c-602);">602</div></div>
+      <div class="dest-cell">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="crowd-cell">
+        <div class="crowd-badge crowd-normal"><span class="icon">🚶</span>正常</div>
+        <div class="crowd-row">
+          <div class="crowd-dots" id="dots-2"></div>
+          <span class="crowd-seats">剩 9 席</span>
+        </div>
+      </div>
+      <div class="arrival-cell">
+        <div class="arrival-arriving">
+          <span class="zh">即將進站</span>
+          <span class="en">Arriving</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: 682 擁擠 3分鐘 -->
+    <div class="bus-row">
+      <div><div class="route-circle" style="background:var(--c-682);">682</div></div>
+      <div class="dest-cell">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="crowd-cell">
+        <div class="crowd-badge crowd-busy"><span class="icon">🚶</span>擁擠</div>
+        <div class="crowd-row">
+          <div class="crowd-dots" id="dots-3"></div>
+          <span class="crowd-seats">剩 3 席</span>
+        </div>
+      </div>
+      <div class="arrival-cell">
+        <div class="arrival-minutes">
+          <div class="zh">3 分鐘</div>
+          <div class="en">3 min</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: 652 滿載 8分鐘 -->
+    <div class="bus-row">
+      <div><div class="route-circle" style="background:var(--c-652);">652</div></div>
+      <div class="dest-cell">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="crowd-cell">
+        <div class="crowd-badge crowd-full"><span class="icon">✕</span>滿載</div>
+        <div class="crowd-row">
+          <div class="crowd-dots" id="dots-4"></div>
+          <span class="crowd-seats">剩 0 席</span>
+        </div>
+      </div>
+      <div class="arrival-cell">
+        <div class="arrival-minutes">
+          <div class="zh">8 分鐘</div>
+          <div class="en">8 min</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 5: 672 正常 12分鐘 -->
+    <div class="bus-row">
+      <div><div class="route-circle" style="background:var(--c-672b);">672</div></div>
+      <div class="dest-cell">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="crowd-cell">
+        <div class="crowd-badge crowd-normal"><span class="icon">🚶</span>正常</div>
+        <div class="crowd-row">
+          <div class="crowd-dots" id="dots-5"></div>
+          <span class="crowd-seats">剩 14 席</span>
+        </div>
+      </div>
+      <div class="arrival-cell">
+        <div class="arrival-minutes">
+          <div class="zh">12 分鐘</div>
+          <div class="en">12 min</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 6: 672 寬鬆 18分鐘 -->
+    <div class="bus-row">
+      <div><div class="route-circle" style="background:var(--c-672c);">672</div></div>
+      <div class="dest-cell">
+        <div class="main">往 內湖</div>
+        <div class="via">via 西松</div>
+      </div>
+      <div class="crowd-cell">
+        <div class="crowd-badge crowd-loose"><span class="icon">🚶</span>寬鬆</div>
+        <div class="crowd-row">
+          <div class="crowd-dots" id="dots-6"></div>
+          <span class="crowd-seats">剩 22 席</span>
+        </div>
+      </div>
+      <div class="arrival-cell">
+        <div class="arrival-minutes">
+          <div class="zh">18 分鐘</div>
+          <div class="en">18 min</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.bus-list -->
+</div><!-- /.board -->
+
+<script>
+  /* ── Live clock ── */
+  const DAYS = ['週日','週一','週二','週三','週四','週五','週六'];
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function tick(){
+    const now = new Date();
+    const h = pad(now.getHours()), m = pad(now.getMinutes()), s = pad(now.getSeconds());
+    document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+    const y = now.getFullYear(), mo = pad(now.getMonth()+1), d = pad(now.getDate());
+    const day = DAYS[now.getDay()];
+    document.getElementById('dateline').textContent = `${y}年${mo}月${d}日 ${day}`;
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  /* ── Crowd dot rows ── */
+  // config: [filled, total, dotColor, emptyColor]
+  const dotConfig = {
+    'dots-1': { filled: 6,  total: 20, color: '#4A9C35', empty: '#C0C0A0' },  // 寬鬆
+    'dots-2': { filled: 11, total: 20, color: '#6AAC40', empty: '#C0C0A0' },  // 正常
+    'dots-3': { filled: 17, total: 20, color: '#C07830', empty: '#C0C0A0' },  // 擁擠
+    'dots-4': { filled: 20, total: 20, color: '#FF4444', empty: 'rgba(255,100,100,.3)' }, // 滿載
+    'dots-5': { filled: 6,  total: 20, color: '#6AAC40', empty: '#C0C0A0' },  // 正常
+    'dots-6': { filled: 2,  total: 20, color: '#4A9C35', empty: '#C0C0A0' },  // 寬鬆
+  };
+  Object.entries(dotConfig).forEach(([id, cfg]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    for(let i = 0; i < cfg.total; i++){
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      dot.style.background = i < cfg.filled ? cfg.color : cfg.empty;
+      el.appendChild(dot);
+    }
+  });
+
+  /* ── Synchronized sliders (route-map + banner) ── */
+  const bannerSlides = Array.from(document.querySelectorAll('.banner-slide'));
+  const routeSlides  = Array.from(document.querySelectorAll('.route-map-slide'));
+  let current = 0;
+
+  function slideGroup(slides, fromIdx, toIdx) {
+    const EASE = 'transform 0.55s ease-in-out';
+    // Park incoming off-screen left instantly
+    slides[toIdx].style.transition = 'none';
+    slides[toIdx].style.transform  = 'translateX(-100%)';
+    slides[toIdx].offsetHeight; // force reflow
+    // Animate out → right, in ← left
+    slides[fromIdx].style.transition = EASE;
+    slides[fromIdx].style.transform  = 'translateX(100%)';
+    slides[toIdx].style.transition   = EASE;
+    slides[toIdx].style.transform    = 'translateX(0)';
+  }
+
+  function nextSlide() {
+    const next = (current + 1) % bannerSlides.length;
+    slideGroup(bannerSlides, current, next);
+    slideGroup(routeSlides,  current, next);
+    current = next;
+  }
+
+  setInterval(nextSlide, 4000);
+</script>
+</body>
+</html>
